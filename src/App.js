@@ -1,4 +1,4 @@
-import React, {useMemo, useRef, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import Counter from "./components/counter";
 import ClassCounter from "./components/ClassCounter";
 import './styles/App.css';
@@ -12,18 +12,24 @@ import MySelect from "./components/UI/select/MySelect";
 import PostFilter from "./components/PostFilter";
 import MyModal from "./components/UI/MyModal/MyModal";
 import {usePosts} from "./hooks/usePosts";
+import axios from "axios";
+import PostService from "./API/PostService";
+import Loader from "./components/UI/Loader/Loader";
+import {useFetching} from "./hooks/useFetching";
 
 function App() {
-    //
-    // const [posts, setPosts] = useState([
-    //     {id: 1, title: 'Test 1', body: 'Testing 1'},
-    //     {id: 2, title: 'Fest 2', body: 'Testing 2'},
-    //     {id: 3, title: 'Eest 3', body: 'Testing 3'},
-    // ]);
-
+    const [posts, setPosts] = useState([]);
     const [filter, setFilter] = useState({sort: '', query: ''});
     const [modal, setModal] = useState(false);
     const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
+    const [fetchPosts, isPostsLoading, postError] = useFetching(async () => {
+        const posts = await PostService.getAll();
+        setPosts(posts)
+    });
+
+    useEffect(() => {
+        fetchPosts().then(r => {});
+    }, []);
 
     const createPost = (newPost) => {
         setPosts([...posts, newPost])
@@ -36,6 +42,7 @@ function App() {
 
     return (
         <div className="App">
+            <button onClick={fetchPosts}>GET</button>
             <MyButton
                 style={{marginTop: 30}}
                 onClick={() => setModal(true)}
@@ -51,7 +58,13 @@ function App() {
                 filter={filter}
                 setFilter={setFilter}
             />
-            <PostList remove={deletePost} posts={sortedAndSearchedPosts} title={'List of Posts'}/>
+            {postError &&
+                <h1>Error</h1>
+            }
+            {isPostsLoading
+                ? <div style={{display: 'flex', justifyContent: 'center', marginTop: 50}}><Loader/></div>
+                : <PostList remove={deletePost} posts={sortedAndSearchedPosts} title={'List of Posts'}/>
+            }
         </div>
     );
 }
