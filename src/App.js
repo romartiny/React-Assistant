@@ -16,20 +16,29 @@ import axios from "axios";
 import PostService from "./API/PostService";
 import Loader from "./components/UI/Loader/Loader";
 import {useFetching} from "./hooks/useFetching";
+import {getPageCount, getPagesArray} from "./utils/pages";
 
 function App() {
     const [posts, setPosts] = useState([]);
     const [filter, setFilter] = useState({sort: '', query: ''});
     const [modal, setModal] = useState(false);
     const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
+    const [totalPages, setTotalPages] = useState(0);
+    const [limit, setLimit] = useState(10);
+    const [page, setPage] = useState(1);
+
+    let pagesArray = getPagesArray(totalPages);
+
     const [fetchPosts, isPostsLoading, postError] = useFetching(async () => {
-        const posts = await PostService.getAll();
-        setPosts(posts)
+        const response = await PostService.getAll(limit, page);
+        setPosts(response.data)
+        const totalPages = response.headers['x-total-count'];
+        setTotalPages(getPageCount(totalPages, limit));
     });
 
     useEffect(() => {
         fetchPosts().then(r => {});
-    }, []);
+    }, [page]);
 
     const createPost = (newPost) => {
         setPosts([...posts, newPost])
@@ -40,9 +49,12 @@ function App() {
         setPosts(posts.filter(p => p.id !== post.id))
     }
 
+    const changePage = (page) => {
+        setPage(page)
+    }
+
     return (
         <div className="App">
-            <button onClick={fetchPosts}>GET</button>
             <MyButton
                 style={{marginTop: 30}}
                 onClick={() => setModal(true)}
@@ -53,7 +65,6 @@ function App() {
                 visible={modal} setVisible={setModal}>
                 <PostForm create={createPost}/>
             </MyModal>
-            {/*<hr style={{margin: "15px"}}/>*/}
             <PostFilter
                 filter={filter}
                 setFilter={setFilter}
@@ -65,6 +76,16 @@ function App() {
                 ? <div style={{display: 'flex', justifyContent: 'center', marginTop: 50}}><Loader/></div>
                 : <PostList remove={deletePost} posts={sortedAndSearchedPosts} title={'List of Posts'}/>
             }
+            <div className='page__wrapper'>
+                {pagesArray.map(p =>
+                    <span
+                        onClick={() => changePage(p)}
+                        key={p}
+                        className={page === p ? 'page page__current' : 'page'}>
+                        {p}
+                    </span>
+                )}
+            </div>
         </div>
     );
 }
